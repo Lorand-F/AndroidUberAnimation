@@ -66,7 +66,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mService=Common.getGoogleApi();
 
 
-        17.10
+
 
     }
 
@@ -77,6 +77,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+        mMap.setTrafficEnabled(false);
+
+        17.30
 
         LatLng bucharest = new LatLng(44.4444282,26.1279446);
         mMap.addMarker(new MarkerOptions().position(bucharest).title("Marker in Bucharest"));
