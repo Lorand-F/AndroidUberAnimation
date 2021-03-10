@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">AndroidUberAnimation</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="google_directions_key">AIzaSyDtisUtzrLLEPJ-7L_JEoxGF-twU8_sRC0</string>
+    <string name="enter_place">Enter Place</string>
+    <string name="go">Go</string>
+</resources>
