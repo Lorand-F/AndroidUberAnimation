@@ -2,25 +2,37 @@ package com.example.androiduberanimation;
 
 import androidx.fragment.app.FragmentActivity;
 
+import android.animation.ValueAnimator;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.LinearInterpolator;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import com.example.androiduberanimation.Remote.IGoogleApi;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.JointType;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolygonOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.maps.model.SquareCap;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,7 +55,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Button btnGo;
     private EditText edtPlace;
     private  String destination;
-    private PolylineOptions polygonOptions, blackPolylineOptions;
+    private PolylineOptions polylineOptions, blackPolylineOptions;
     private Polyline blackPolyline, greyPolyline;
 
     private LatLng myLocation;
@@ -111,17 +123,105 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mService.getDataFromGoogleApi(requestUrl).enqueue(new Callback<String>() {
                 @Override
                 public void onResponse(Call<String> call, Response<String> response) {
-                    21.51
+                    try {
+                        JSONObject jsonObject=new JSONObject(response.body().toString());
+                        JSONArray jsonArray=jsonObject.getJSONArray("routes");
+                        for (int i=0;i<jsonArray.length();i++){
+                            JSONObject route=jsonArray.getJSONObject(i);
+                            JSONObject poly=route.getJSONObject("overview_polyline");
+                            String polyline=poly.getString("points");
+                            polylineList=decodePoly(polyline);
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                    LatLngBounds.Builder builder=new LatLngBounds.Builder();
+                    for(LatLng latLng:polylineList)builder.include(latLng);
+                    LatLngBounds bounds=builder.build();
+                    CameraUpdate mCameraUpdate=CameraUpdateFactory.newLatLngBounds(bounds,2);
+                    mMap.animateCamera(mCameraUpdate);
+
+                    polylineOptions=new PolylineOptions();
+                    polylineOptions.color(Color.GRAY);
+                    polylineOptions.width(5);
+                    polylineOptions.startCap(new SquareCap());
+                    polylineOptions.endCap(new SquareCap());
+                    polylineOptions.jointType(JointType.ROUND);
+                    polylineOptions.addAll(polylineList);
+                    greyPolyline=mMap.addPolyline(polylineOptions);
+
+                    blackPolylineOptions=new PolylineOptions();
+                    blackPolylineOptions.color(Color.BLACK);
+                    blackPolylineOptions.width(5);
+                    blackPolylineOptions.startCap(new SquareCap());
+                    blackPolylineOptions.endCap(new SquareCap());
+                    blackPolylineOptions.jointType(JointType.ROUND);
+                    blackPolylineOptions.addAll(polylineList);
+                    blackPolyline=mMap.addPolyline(blackPolylineOptions);
+
+                    mMap.addMarker(new MarkerOptions().position(polylineList.get(polylineList.size()-1)));
+
+                    ValueAnimator polylineAnimator=ValueAnimator.ofInt(0,100);
+                    polylineAnimator.setDuration(2000);
+                    polylineAnimator.setInterpolator(new LinearInterpolator());
+                    polylineAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                        @Override
+                        public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                            List<LatLng> points=greyPolyline.getPoints();
+                            int percentValue= (int) valueAnimator.getAnimatedValue();
+                            int size=points.size();
+                            int newPoints= (int) (size*(percentValue/100.0f));
+                            List<LatLng> p=points.subList(0,newPoints);
+                            blackPolyline.setPoints(p);
+                        }
+                    });
+                    30.15
                 }
 
                 @Override
                 public void onFailure(Call<String> call, Throwable t) {
-
+                    Toast.makeText(MapsActivity.this,""+t.getMessage(),Toast.LENGTH_SHORT).show();
                 }
             });
         }catch (Exception e){
             e.printStackTrace();
         }
 
+    }
+
+    private List<LatLng> decodePoly(String encoded) {
+
+        List poly = new ArrayList();
+        int index = 0, len = encoded.length();
+        int lat = 0, lng = 0;
+
+        while (index < len) {
+            int b, shift = 0, result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            shift = 0;
+            result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            LatLng p = new LatLng((((double) lat / 1E5)),
+                    (((double) lng / 1E5)));
+            poly.add(p);
+        }
+
+        return poly;
+    }
     }
 }
