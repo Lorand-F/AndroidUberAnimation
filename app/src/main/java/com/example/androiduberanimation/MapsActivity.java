@@ -19,6 +19,8 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.JointType;
 import com.google.android.gms.maps.model.LatLng;
@@ -50,7 +52,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private float v;
     private double lat,lng;
     private Handler handler;
-    private LatLng startPosition,endPositin;
+    private LatLng startPosition,endPosition;
     private int index,next;
     private Button btnGo;
     private EditText edtPlace;
@@ -162,10 +164,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                     mMap.addMarker(new MarkerOptions().position(polylineList.get(polylineList.size()-1)));
 
-                    ValueAnimator polylineAnimator=ValueAnimator.ofInt(0,100);
-                    polylineAnimator.setDuration(2000);
-                    polylineAnimator.setInterpolator(new LinearInterpolator());
-                    polylineAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                     final ValueAnimator valueAnimator=ValueAnimator.ofInt(0,100);
+                    valueAnimator.setDuration(2000);
+                    valueAnimator.setInterpolator(new LinearInterpolator());
+                    valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                         @Override
                         public void onAnimationUpdate(ValueAnimator valueAnimator) {
                             List<LatLng> points=greyPolyline.getPoints();
@@ -176,7 +178,47 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                             blackPolyline.setPoints(p);
                         }
                     });
-                    30.15
+                    valueAnimator.start();
+                    marker=mMap.addMarker(new MarkerOptions().position(bucharest).flat(true).icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_baseline_directions_car_24)));
+
+                    handler=new Handler();
+                    index=-1;
+                    next=1;
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (index < polylineList.size() - 1) {
+                                index++;
+                                next = index + 1;
+                            }
+                            if (index < polylineList.size() - 1) {
+                                startPosition = polylineList.get(index);
+                                endPosition = polylineList.get(next);
+                            }
+                            ValueAnimator valueAnimator=ValueAnimator.ofFloat(0, 1);
+                            valueAnimator.setDuration(3000);
+                            valueAnimator.setInterpolator(new LinearInterpolator());
+                            valueAnimator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                                @Override
+                                public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                                    v=valueAnimator.getAnimatedFraction();
+                                    lng=v*endPosition.longitude+(1-v)*startPosition.longitude;
+                                    lat=v*endPosition.latitude+(1-v)*startPosition.latitude;
+                                    LatLng newPos=new LatLng(lat,lng);
+                                    marker.setPosition(newPos);
+                                    marker.setAnchor(0.5f,0.5f);
+                                    marker.setRotation(getBearing(startPosition,newPos));
+                                    mMap.moveCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder()
+                                    .target(newPos)
+                                    .zoom(15.5f)
+                                    .build()));
+                                }
+                            });
+                            valueAnimator.start();
+                            handler.postDelayed(this,3000);
+                        }
+
+                    },3000);
                 }
 
                 @Override
@@ -187,6 +229,12 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }catch (Exception e){
             e.printStackTrace();
         }
+
+    }
+
+    private float getBearing(LatLng startPosition, LatLng newPos) {
+
+        35.58
 
     }
 
